@@ -88,7 +88,7 @@ jobs:
             cd snapshot
             echo "Downloading library snapshot: https://github.com/${GITHUB_REPOSITORY}/archive/${GITHUB_SHA}.tar.gz"
             curl -L --retry "$NET_RETRY_COUNT" -o "${LIBRARY}-${GITHUB_SHA}.tar.gz" "https://github.com/${GITHUB_REPOSITORY}/archive/${GITHUB_SHA}.tar.gz"
-            tar -xf "${LIBRARY}-${GITHUB_SHA}.tar.gz"
+            tar -xzf "${LIBRARY}-${GITHUB_SHA}.tar.gz"
             if [ ! -d "${LIBRARY}-${GITHUB_SHA}" ]
             then
                 echo "Library snapshot does not contain the library directory ${LIBRARY}-${GITHUB_SHA}:"
