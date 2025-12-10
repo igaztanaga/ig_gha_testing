@@ -72,18 +72,13 @@ jobs:
             
             if [ "${{matrix.vm}}" == "netbsd" ]
             then
-                su -
-                # Set PKG_PATH first
-                export PKG_PATH="http://ftp.netbsd.org/pub/pkgsrc/packages/NetBSD/$(uname -p)/$(uname -r | cut -d_ -f1)/All/"
-                # Install pkgin
-                pkg_add pkgin
-                # Configure pkgin repository
-                echo "http://ftp.netbsd.org/pub/pkgsrc/packages/NetBSD/$(uname -p)/$(uname -r | cut -d_ -f1)/All/" > /usr/pkg/etc/pkgin/repositories.conf
-                # Update package database
-                pkgin update
-                # Now install git easily
-                pkgin install git-base bash python3 curl
-                exit
+                sudo sh -c '
+                    export PKG_PATH="http://ftp.netbsd.org/pub/pkgsrc/packages/NetBSD/$(uname -p)/$(uname -r | cut -d_ -f1)/All/"
+                    pkg_add pkgin
+                    echo "$PKG_PATH" > /usr/pkg/etc/pkgin/repositories.conf
+                    pkgin update
+                    pkgin install -y git-base bash python311 curl
+                '
             fi
             
             echo GITHUB_REPOSITORY: $GITHUB_REPOSITORY
