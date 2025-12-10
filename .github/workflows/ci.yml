@@ -39,7 +39,6 @@ jobs:
           environment_variables: GIT_FETCH_JOBS NET_RETRY_COUNT DEFAULT_BUILD_VARIANT
           shell: bash
           run: |
-          run: |
             uname -mrs
             sysctl hw.model
             sysctl hw.ncpu
