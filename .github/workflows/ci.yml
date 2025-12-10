@@ -80,7 +80,7 @@ jobs:
             echo REF: $REF
             BOOST_BRANCH=develop && [ "$REF" = "master" ] && BOOST_BRANCH=master || true
             echo BOOST_BRANCH: $BOOST_BRANCH
-            BUILD_JOBS=$(sysctl -n hw.ncpu)
+            BUILD_JOBS=$(/usr/sbin/sysctl -n hw.ncpu)
             echo BUILD_JOBS: $BUILD_JOBS
             DEPINST_ARGS=()
             DEPINST_ARGS+=("--git_args" "--jobs $GIT_FETCH_JOBS")
