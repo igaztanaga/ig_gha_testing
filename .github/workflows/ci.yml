@@ -14,7 +14,7 @@ env:
   DEFAULT_BUILD_VARIANT: debug,release
 
 jobs:
-  posix:
+  cygwin:
     defaults:
       run:
         shell: bash
@@ -24,7 +24,7 @@ jobs:
       matrix:
         include:
           - toolset: gcc
-            cxxstd: "11"
+            cxxstd: "03,11,14,17"
             cxxflags: -pipe
             os: windows-latest
 
@@ -98,6 +98,7 @@ jobs:
         shell: C:\cygwin\bin\bash.exe --login --norc -eo pipefail -o igncr '{0}'
         run: |
             cd boost-root
+            ${{matrix.toolset}} --version
             B2_ARGS=("-j" "$BUILD_JOBS" "toolset=${{matrix.toolset}}" "cxxstd=${{matrix.cxxstd}}" "debug-symbols=off")
             #Build variant
             if [ -n "${{matrix.build_variant}}" ]
