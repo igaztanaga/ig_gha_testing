@@ -75,7 +75,6 @@ jobs:
             then
                 sudo sh -c '
                     export PKG_PATH="http://ftp.netbsd.org/pub/pkgsrc/packages/NetBSD/$(uname -p)/$(uname -r | cut -d_ -f1)/All/"
-                    pkg_add pkgin
                     echo "$PKG_PATH" > /usr/pkg/etc/pkgin/repositories.conf
                     pkgin update
                     pkgin install -y git-base bash python311 curl
