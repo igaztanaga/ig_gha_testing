@@ -72,7 +72,6 @@ jobs:
             rm -f "${LIBRARY}-${GITHUB_SHA}.tar.gz"
             cd ..
 
-            echo "Cloning Boost"
             git clone -b "$BOOST_BRANCH" --depth 1 "https://github.com/boostorg/boost.git" "boost-root"
             cd boost-root
             mkdir -p libs
@@ -81,11 +80,8 @@ jobs:
             rm -rf "../snapshot"
             git submodule update --init tools/boostdep
             DEPINST_ARGS+=("$LIBRARY")
-            echo "Executing depinst.py"
             python3 tools/boostdep/depinst/depinst.py "${DEPINST_ARGS[@]}"
-            echo "Executing bootstrap.sh"
             ./bootstrap.sh
-            echo "b2 headers"
             ./b2 headers
 
             if [ -n "${{matrix.compiler}}" -o -n "$GCC_TOOLCHAIN_ROOT" ]
@@ -155,7 +151,5 @@ jobs:
             fi
 
             B2_ARGS+=("libs/$LIBRARY/test")
-            
-            echo "Executing b2" "${B2_ARGS[@]}"
-            bash ./b2 "${B2_ARGS[@]}"
+            ./b2 "${B2_ARGS[@]}"
 
