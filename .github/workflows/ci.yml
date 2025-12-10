@@ -20,6 +20,7 @@ jobs:
       matrix:
         include:
           - toolset: clang
+            vm: freebsd
             cxxflags: -pipe
             os: ubuntu-latest
             freebsd_version: "14.1"
@@ -29,8 +30,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
       - name: Test on FreeBSD
+        if: matrix.vm == 'freebsd'
         uses: cross-platform-actions/action@v0.26.0
         with:
           operating_system: freebsd
@@ -38,6 +39,14 @@ jobs:
           environment_variables: GIT_FETCH_JOBS NET_RETRY_COUNT DEFAULT_BUILD_VARIANT
           shell: bash
           run: |
+          run: |
+            uname -mrs
+            sysctl hw.model
+            sysctl hw.ncpu
+            sysctl hw.physmem
+            sysctl hw.usermem
+            pwd
+            ls -la
             set -e
 
             # Install required packages
