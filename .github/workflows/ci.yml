@@ -14,7 +14,7 @@ env:
   DEFAULT_BUILD_VARIANT: debug,release
 
 jobs:
-  freebsd:
+  bsd:
     strategy:
       fail-fast: false
       matrix:
@@ -30,6 +30,12 @@ jobs:
             cxxflags: -pipe
             os: ubuntu-latest
             bsd_version: "7.5"
+            
+          - toolset: gcc
+            vm: netbsd
+            cxxflags: -pipe
+            os: ubuntu-latest
+            bsd_version: "9.4"
 
     timeout-minutes: 240
     runs-on: ${{matrix.os}}
