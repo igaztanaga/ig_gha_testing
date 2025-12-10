@@ -72,7 +72,7 @@ jobs:
             
             if [ "${{matrix.vm}}" == "netbsd" ]
             then
-                sudo pkg_add git bash python3 curl
+                sudo /usr/sbin/pkg_add git bash python3 curl
             fi
             
             echo GITHUB_REPOSITORY: $GITHUB_REPOSITORY
