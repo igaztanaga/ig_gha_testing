@@ -70,6 +70,12 @@ jobs:
                 sudo pkg_add git bash python3 curl
             fi
             
+            if [ "${{matrix.vm}}" == "netbsd" ]
+            then
+                sudo echo "PKG_PATH=ftp://ftp.NetBSD.org/pub/pkgsrc/packages/$(uname)/$(uname -m)/$(uname -r)/All/" >> /etc/pkg_install.conf
+                /usr/sbin/pkg_add git bash python3 curl
+            fi
+            
             echo GITHUB_REPOSITORY: $GITHUB_REPOSITORY
             LIBRARY=${GITHUB_REPOSITORY#*/}
             echo LIBRARY: $LIBRARY
@@ -80,7 +86,7 @@ jobs:
             echo REF: $REF
             BOOST_BRANCH=develop && [ "$REF" = "master" ] && BOOST_BRANCH=master || true
             echo BOOST_BRANCH: $BOOST_BRANCH
-            BUILD_JOBS=$(/usr/sbin/sysctl -n hw.ncpu)
+            BUILD_JOBS=$(/sbin/sysctl -n hw.ncpu)
             echo BUILD_JOBS: $BUILD_JOBS
             DEPINST_ARGS=()
             DEPINST_ARGS+=("--git_args" "--jobs $GIT_FETCH_JOBS")
