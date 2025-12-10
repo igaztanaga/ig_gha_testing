@@ -77,7 +77,8 @@ jobs:
                     export PKG_PATH="http://ftp.netbsd.org/pub/pkgsrc/packages/NetBSD/$(uname -p)/$(uname -r | cut -d_ -f1)/All/"
                     echo "$PKG_PATH" > /usr/pkg/etc/pkgin/repositories.conf
                     pkgin update
-                    pkgin -y install git-base bash python311 curl ca-certificates
+                    pkgin -y install git-base bash python311 curl ca-certificates mozilla-rootcerts
+                    mozilla-rootcerts install
                 '
             fi
             
