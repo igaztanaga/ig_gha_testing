@@ -31,10 +31,11 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Test on FreeBSD
-        uses: cross-platform-actions/action@v0.25.0
+        uses: cross-platform-actions/action@v0.26.0
         with:
           operating_system: freebsd
           version: ${{matrix.freebsd_version}}
+          environment_variables: GIT_FETCH_JOBS NET_RETRY_COUNT DEFAULT_BUILD_VARIANT
           shell: bash
           run: |
             set -e
