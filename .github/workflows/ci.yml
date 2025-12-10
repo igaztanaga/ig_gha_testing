@@ -48,6 +48,7 @@ jobs:
           operating_system: ${{matrix.vm}}
           version: ${{matrix.bsd_version}}
           environment_variables: GIT_FETCH_JOBS NET_RETRY_COUNT DEFAULT_BUILD_VARIANT
+          sync_files: false
           shell: bash
           run: |
             uname -mrs
