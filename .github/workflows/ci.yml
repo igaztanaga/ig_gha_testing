@@ -46,10 +46,23 @@ jobs:
             pwd
             ls -la
             set -e
-
+            
             # Install required packages
-            sudo pkg install -y git bash python3 curl
-
+            if [ "${{matrix.vm}}" == "freebsd" ]
+            then
+                sudo pkg install -y git bash python3 curl
+            if
+            
+            if [ "${{matrix.vm}}" == "openbsd" ]
+            then
+                sudo pkg_add git bash python3 curl
+            if
+            
+            if [ "${{matrix.vm}}" == "netbsd" ]
+            then
+                sudo pkg_add git bash python3 curl
+            if
+            
             echo GITHUB_REPOSITORY: $GITHUB_REPOSITORY
             LIBRARY=${GITHUB_REPOSITORY#*/}
             echo LIBRARY: $LIBRARY
