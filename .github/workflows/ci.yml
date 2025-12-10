@@ -23,19 +23,18 @@ jobs:
             vm: freebsd
             cxxflags: -pipe
             os: ubuntu-latest
-            freebsd_version: "14.1"
+            bsd_version: "14.1"
 
     timeout-minutes: 240
     runs-on: ${{matrix.os}}
 
     steps:
       - uses: actions/checkout@v4
-      - name: Test on FreeBSD
-        if: matrix.vm == 'freebsd'
+      - name: Test on ${{matrix.vm}}
         uses: cross-platform-actions/action@v0.26.0
         with:
-          operating_system: freebsd
-          version: ${{matrix.freebsd_version}}
+          operating_system: ${{matrix.vm}}
+          version: ${{matrix.bsd_version}}
           environment_variables: GIT_FETCH_JOBS NET_RETRY_COUNT DEFAULT_BUILD_VARIANT
           shell: bash
           run: |
