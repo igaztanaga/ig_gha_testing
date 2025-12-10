@@ -51,17 +51,17 @@ jobs:
             if [ "${{matrix.vm}}" == "freebsd" ]
             then
                 sudo pkg install -y git bash python3 curl
-            if
+            fi
             
             if [ "${{matrix.vm}}" == "openbsd" ]
             then
                 sudo pkg_add git bash python3 curl
-            if
+            fi
             
             if [ "${{matrix.vm}}" == "netbsd" ]
             then
                 sudo pkg_add git bash python3 curl
-            if
+            fi
             
             echo GITHUB_REPOSITORY: $GITHUB_REPOSITORY
             LIBRARY=${GITHUB_REPOSITORY#*/}
