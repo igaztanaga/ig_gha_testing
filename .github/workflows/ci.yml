@@ -70,14 +70,6 @@ jobs:
                 sudo pkg_add git bash python3 curl
             fi
             
-            if [ "${{matrix.vm}}" == "netbsd" ]
-            then
-                # Set the package repository URL
-                #su
-                #export PKG_PATH="http://ftp.netbsd.org/pub/pkgsrc/packages/NetBSD/$(uname -p)/$(uname -r | cut -d_ -f1)/All/"
-                #/usr/sbin/pkg_add git bash python3 curl
-            fi
-            
             echo GITHUB_REPOSITORY: $GITHUB_REPOSITORY
             LIBRARY=${GITHUB_REPOSITORY#*/}
             echo LIBRARY: $LIBRARY
