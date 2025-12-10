@@ -24,6 +24,12 @@ jobs:
             cxxflags: -pipe
             os: ubuntu-latest
             bsd_version: "14.1"
+            
+          - toolset: clang
+            vm: openbsd
+            cxxflags: -pipe
+            os: ubuntu-latest
+            bsd_version: "7.5"
 
     timeout-minutes: 240
     runs-on: ${{matrix.os}}
