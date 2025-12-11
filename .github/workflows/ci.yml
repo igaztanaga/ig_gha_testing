@@ -80,17 +80,20 @@ jobs:
             set -e
             
             # Install required packages
+            echo "Installing packages..."
             if [ "${{matrix.vm}}" == "freebsd" ]
             then
+                echo "Executing: sudo pkg git bash python3 curl"
                 sudo pkg install -y git bash python3 curl
             fi
-            
             if [ "${{matrix.vm}}" == "openbsd" ]
             then
+                echo "Executing: sudo pkg_add git bash python3 curl"            
                 sudo pkg_add git bash python3 curl
             fi
             if [ "${{matrix.vm}}" == "netbsd" ]
             then
+                echo "Executing: pkgin -y install git-base bash python311 curl ca-certificates mozilla-rootcerts mozilla-rootcerts-openssl"            
                 sudo sh -c '
                     export PKG_PATH="http://ftp.netbsd.org/pub/pkgsrc/packages/NetBSD/$(uname -p)/$(uname -r | cut -d_ -f1)/All/"
                     echo "$PKG_PATH" > /usr/pkg/etc/pkgin/repositories.conf
