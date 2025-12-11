@@ -79,6 +79,7 @@ jobs:
                     pkgin update
                     pkgin -y install git-base bash python311 curl ca-certificates mozilla-rootcerts mozilla-rootcerts-openssl
                 '
+                export PATH=/usr/pkg/bin:$PATH >> ~/.profile
             fi
             
             echo GITHUB_REPOSITORY: $GITHUB_REPOSITORY
