@@ -51,11 +51,12 @@ jobs:
           sync_files: false
           shell: bash
           run: |
+            export PATH=/usr/pkg/bin:/sbin/:$PATH >> ~/.profile
             uname -mrs
-            /sbin/sysctl hw.model
-            /sbin/sysctl hw.ncpu
-            /sbin/sysctl hw.physmem
-            /sbin/sysctl hw.usermem
+            sysctl hw.model
+            sysctl hw.ncpu
+            sysctl hw.physmem
+            sysctl hw.usermem
             pwd
             ls -la
             set -e
@@ -76,9 +77,9 @@ jobs:
                     export PKG_PATH="http://ftp.netbsd.org/pub/pkgsrc/packages/NetBSD/$(uname -p)/$(uname -r | cut -d_ -f1)/All/"
                     echo "$PKG_PATH" > /usr/pkg/etc/pkgin/repositories.conf
                     pkgin update
-                    pkgin -y install git-base bash python3 curl ca-certificates mozilla-rootcerts mozilla-rootcerts-openssl
+                    pkgin -y install git-base bash python311 curl ca-certificates mozilla-rootcerts mozilla-rootcerts-openssl
+                    ln -s /usr/pkg/bin/python3.11 /usr/pkg/bin/python3
                 '
-                export PATH=/usr/pkg/bin:$PATH >> ~/.profile
             fi
             echo GITHUB_REPOSITORY: $GITHUB_REPOSITORY
             LIBRARY=${GITHUB_REPOSITORY#*/}
@@ -90,7 +91,7 @@ jobs:
             echo REF: $REF
             BOOST_BRANCH=develop && [ "$REF" = "master" ] && BOOST_BRANCH=master || true
             echo BOOST_BRANCH: $BOOST_BRANCH
-            BUILD_JOBS=$(/sbin/sysctl -n hw.ncpu)
+            BUILD_JOBS=$(sysctl -n hw.ncpu)
             echo BUILD_JOBS: $BUILD_JOBS
             DEPINST_ARGS=()
             DEPINST_ARGS+=("--git_args" "--jobs $GIT_FETCH_JOBS")
