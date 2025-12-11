@@ -140,6 +140,7 @@ jobs:
             rm -rf "../snapshot"
             git submodule update --init tools/boostdep
             DEPINST_ARGS+=("$LIBRARY")
+            python3 --version
             python3 tools/boostdep/depinst/depinst.py "${DEPINST_ARGS[@]}"
             ./bootstrap.sh
             ./b2 headers
