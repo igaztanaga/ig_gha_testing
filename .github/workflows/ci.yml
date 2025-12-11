@@ -90,7 +90,7 @@ jobs:
             then
                 pkg_info -Q python
                 echo "Executing: sudo pkg_add git bash python%3.11 curl"            
-                sudo pkg_add git bash python%3.11 curl
+                sudo pkg_add git bash curl
             fi
             if [ "${{matrix.vm}}" == "netbsd" ]
             then
@@ -140,7 +140,7 @@ jobs:
             rm -rf "../snapshot"
             git submodule update --init tools/boostdep
             DEPINST_ARGS+=("$LIBRARY")
-            python3 tools/boostdep/depinst/depinst.py "${DEPINST_ARGS[@]}"
+            python tools/boostdep/depinst/depinst.py "${DEPINST_ARGS[@]}"
             ./bootstrap.sh
             ./b2 headers
 
