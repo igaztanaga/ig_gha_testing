@@ -23,19 +23,37 @@ jobs:
             vm: freebsd
             cxxflags: -pipe
             os: ubuntu-latest
+            bsd_version: "13.5"
+        
+          - toolset: clang
+            vm: freebsd
+            cxxflags: -pipe
+            os: ubuntu-latest
             bsd_version: "14.1"
-            
+
           - toolset: clang
             vm: openbsd
             cxxflags: -pipe
             os: ubuntu-latest
             bsd_version: "7.5"
+
+          - toolset: clang
+            vm: openbsd
+            cxxflags: -pipe
+            os: ubuntu-latest
+            bsd_version: "7.8"            
             
           - toolset: gcc
             vm: netbsd
             cxxflags: -pipe
             os: ubuntu-latest
             bsd_version: "9.4"
+
+          - toolset: gcc
+            vm: netbsd
+            cxxflags: -pipe
+            os: ubuntu-latest
+            bsd_version: "10.1"
 
     timeout-minutes: 240
     runs-on: ${{matrix.os}}
