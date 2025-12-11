@@ -84,13 +84,13 @@ jobs:
             if [ "${{matrix.vm}}" == "freebsd" ]
             then
                 echo "Executing: sudo pkg git bash python3 curl"
-                sudo pkg install -y git bash python3 curl
+                sudo pkg -v install -y git bash python3 curl
             fi
             if [ "${{matrix.vm}}" == "openbsd" ]
             then
                 pkg_info -Q python
                 echo "Executing: sudo pkg_add git bash python%3.11 curl"            
-                sudo pkg_add git bash curl
+                sudo pkg_add -v git bash python%3.11 curl
             fi
             if [ "${{matrix.vm}}" == "netbsd" ]
             then
@@ -99,7 +99,7 @@ jobs:
                     export PKG_PATH="http://ftp.netbsd.org/pub/pkgsrc/packages/NetBSD/$(uname -p)/$(uname -r | cut -d_ -f1)/All/"
                     echo "$PKG_PATH" > /usr/pkg/etc/pkgin/repositories.conf
                     pkgin update
-                    pkgin -y install git-base bash python311 curl ca-certificates mozilla-rootcerts mozilla-rootcerts-openssl
+                    pkgin -V -y install git-base bash python311 curl ca-certificates mozilla-rootcerts mozilla-rootcerts-openssl
                     ln -s /usr/pkg/bin/python3.11 /usr/pkg/bin/python3
                 '
             fi
@@ -140,7 +140,7 @@ jobs:
             rm -rf "../snapshot"
             git submodule update --init tools/boostdep
             DEPINST_ARGS+=("$LIBRARY")
-            python tools/boostdep/depinst/depinst.py "${DEPINST_ARGS[@]}"
+            python3 tools/boostdep/depinst/depinst.py "${DEPINST_ARGS[@]}"
             ./bootstrap.sh
             ./b2 headers
 
