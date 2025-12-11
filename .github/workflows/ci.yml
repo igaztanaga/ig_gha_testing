@@ -94,7 +94,7 @@ jobs:
                 # Check if python3 binary exists
                 if ! command -v python3 >/dev/null 2>&1; then
                     echo "python3 not found, creating symlink..."
-                    ln -sf /usr/local/bin/python3.11 /usr/local/bin/python3
+                    sudo ln -sf /usr/local/bin/python3.11 /usr/local/bin/python3
                     echo "Symlink created: /usr/local/bin/python3 -> /usr/local/bin/python3.11"
                 else
                     echo "python3 is already available at: $(which python3)"
