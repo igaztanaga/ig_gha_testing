@@ -89,7 +89,8 @@ jobs:
             if [ "${{matrix.vm}}" == "openbsd" ]
             then
                 echo "Executing: sudo pkg_add git bash python3 curl"            
-                sudo pkg_add git bash python3 curl
+                sudo pkg_add git bash python311 curl
+                ln -s /usr/pkg/bin/python3.11 /usr/pkg/bin/python3
             fi
             if [ "${{matrix.vm}}" == "netbsd" ]
             then
