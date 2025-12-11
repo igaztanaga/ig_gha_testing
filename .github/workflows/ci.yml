@@ -70,11 +70,6 @@ jobs:
             then
                 sudo pkg_add git bash python3 curl
             fi
-
-#                    pkgin -y install git-base bash python311 curl ca-certificates mozilla-rootcerts mozilla-rootcerts-openssl
-#                    ln -s /usr/pkg/bin/python3.11 /usr/pkg/bin/python3
-
-            
             if [ "${{matrix.vm}}" == "netbsd" ]
             then
                 sudo sh -c '
@@ -85,7 +80,6 @@ jobs:
                 '
                 export PATH=/usr/pkg/bin:$PATH >> ~/.profile
             fi
-            
             echo GITHUB_REPOSITORY: $GITHUB_REPOSITORY
             LIBRARY=${GITHUB_REPOSITORY#*/}
             echo LIBRARY: $LIBRARY
