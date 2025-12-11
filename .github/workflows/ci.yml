@@ -59,13 +59,31 @@ jobs:
             vm: openbsd
             cxxflags: -pipe
             os: ubuntu-latest
-            bsd_version: "7.8"            
-            
+            bsd_version: "7.8"
+
+          - toolset: gcc
+            vm: netbsd
+            cxxflags: -pipe
+            os: ubuntu-latest
+            bsd_version: "9.2"
+
+          - toolset: gcc
+            vm: netbsd
+            cxxflags: -pipe
+            os: ubuntu-latest
+            bsd_version: "9.3"
+
           - toolset: gcc
             vm: netbsd
             cxxflags: -pipe
             os: ubuntu-latest
             bsd_version: "9.4"
+
+          - toolset: gcc
+            vm: netbsd
+            cxxflags: -pipe
+            os: ubuntu-latest
+            bsd_version: "10.0"
 
           - toolset: gcc
             vm: netbsd
