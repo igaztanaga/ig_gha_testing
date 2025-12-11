@@ -91,6 +91,14 @@ jobs:
                 pkg_info -Q python
                 echo "Executing: sudo pkg_add git bash python%3.11 curl"            
                 sudo pkg_add -v git bash python%3.11 curl
+                # Check if python3 binary exists
+                if ! command -v python3 >/dev/null 2>&1; then
+                    echo "python3 not found, creating symlink..."
+                    ln -sf /usr/local/bin/python3.11 /usr/local/bin/python3
+                    echo "Symlink created: /usr/local/bin/python3 -> /usr/local/bin/python3.11"
+                else
+                    echo "python3 is already available at: $(which python3)"
+                fi
             fi
             if [ "${{matrix.vm}}" == "netbsd" ]
             then
