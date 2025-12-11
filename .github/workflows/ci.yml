@@ -135,7 +135,7 @@ jobs:
           sync_files: false
           shell: bash
           run: |
-            export PATH=/usr/pkg/bin:/sbin/:/usr/local/bin/:$PATH >> ~/.profile
+            export PATH=/usr/pkg/bin:/sbin:/usr/local/bin:$PATH >> ~/.profile
             uname -mrs
             sysctl hw.model
             sysctl hw.ncpu
