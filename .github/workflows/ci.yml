@@ -136,6 +136,7 @@ jobs:
           shell: bash
           run: |
             export PATH=/usr/pkg/bin:/sbin:/usr/local/bin:$PATH >> ~/.profile
+            export PATH=/usr/pkg/bin:/sbin:/usr/local/bin:$PATH
             uname -mrs
             sysctl hw.model
             sysctl hw.ncpu
