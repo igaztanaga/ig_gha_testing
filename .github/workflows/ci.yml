@@ -24,12 +24,30 @@ jobs:
             cxxflags: -pipe
             os: ubuntu-latest
             bsd_version: "13.5"
-        
+
+          - toolset: clang
+            vm: freebsd
+            cxxflags: -pipe
+            os: ubuntu-latest
+            bsd_version: "14.0"
+
           - toolset: clang
             vm: freebsd
             cxxflags: -pipe
             os: ubuntu-latest
             bsd_version: "14.1"
+
+          - toolset: clang
+            vm: freebsd
+            cxxflags: -pipe
+            os: ubuntu-latest
+            bsd_version: "14.2"
+
+          - toolset: clang
+            vm: freebsd
+            cxxflags: -pipe
+            os: ubuntu-latest
+            bsd_version: "14.3"
 
           - toolset: clang
             vm: openbsd
