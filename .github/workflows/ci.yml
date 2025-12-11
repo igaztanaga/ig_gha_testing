@@ -84,7 +84,7 @@ jobs:
             if [ "${{matrix.vm}}" == "freebsd" ]
             then
                 echo "Executing: sudo pkg git bash python3 curl"
-                sudo pkg -v install -y git bash python3 curl
+                sudo pkg -d install -y git bash python3 curl
             fi
             if [ "${{matrix.vm}}" == "openbsd" ]
             then
