@@ -41,7 +41,7 @@ jobs:
             vm: openbsd
             cxxflags: -pipe
             os: ubuntu-latest
-            bsd_version: "7.7"            
+            bsd_version: "7.8"            
             
           - toolset: gcc
             vm: netbsd
@@ -88,8 +88,8 @@ jobs:
             fi
             if [ "${{matrix.vm}}" == "openbsd" ]
             then
-                echo "Executing: sudo pkg_add git bash python3 curl"            
-                sudo pkg_add git bash python3 curl
+                echo "Executing: sudo pkg_add git bash python curl"            
+                sudo pkg_add git bash python curl
             fi
             if [ "${{matrix.vm}}" == "netbsd" ]
             then
