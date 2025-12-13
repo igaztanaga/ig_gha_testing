@@ -96,7 +96,8 @@ jobs:
         if: matrix.cmake_tests == ''
         shell: C:\cygwin\bin\bash.exe --login --norc -eo pipefail -o igncr '{0}'
         run: |
-            yes | cygserver-config && cygrunsrv --start cygserver
+            yes | cygserver-config
+            /usr/sbin/cygserver &
             cd boost-root
             ${{matrix.toolset}} --version
             B2_ARGS=("-j" "$BUILD_JOBS" "toolset=${{matrix.toolset}}" "cxxstd=${{matrix.cxxstd}}" "debug-symbols=off")
