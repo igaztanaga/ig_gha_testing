@@ -29,6 +29,10 @@ jobs:
             cxxstd: "14,17,20,latest"
             addrmd: 64
             os: windows-2025-vs2026
+          - toolset: msvc-14.3
+            cxxstd: "14,17,20,latest"
+            addrmd: 64
+            os: windows-11-arm
 
     timeout-minutes: 240
     runs-on: ${{matrix.os}}
