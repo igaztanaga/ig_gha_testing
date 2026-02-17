@@ -14,6 +14,21 @@ env:
   DEFAULT_BUILD_VARIANT: debug,release
 
 jobs:
+  posix:
+    defaults:
+      run:
+        shell: bash
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - toolset: gcc-14
+            cxxstd: "03,11,14,17,20,2b"
+            cxxflags: -pipe
+            os: ubuntu-24.04-arm
+            install: g++-14-multilib
+            address-model: 32,64
   cygwin:
     defaults:
       run:
