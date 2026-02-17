@@ -27,8 +27,7 @@ jobs:
             cxxstd: "03,11,14,17,20,2b"
             cxxflags: -pipe
             os: ubuntu-24.04-arm
-            install: g++-14-multilib
-            address-model: 32,64
+            install: g++-14
     timeout-minutes: 240
     runs-on: ${{matrix.os}}
     container: ${{matrix.container}}
