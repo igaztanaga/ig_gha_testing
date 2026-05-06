@@ -91,11 +91,39 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - toolset: gcc
-            cxxstd: "03,11,14,17,20,2b"
+          # Linux, gcc-16
+          - toolset: gcc-16
+            cxxstd: "03,11,14,17,20,23,2c"
             cxxflags: -pipe
-            os: ubuntu-24.04-arm
-            install: g++
+            os: ubuntu-latest
+            container: ubuntu:26.04
+            install: g++-16-multilib
+            address-model: 32,64
+          - toolset: gcc-16
+            cxxstd: "03,11,14,17,20,23,2c"
+            cxxflags: -pipe
+            os: ubuntu-latest
+            container: ubuntu:26.04
+            install: g++-16-multilib
+            address-model: 32,64
+          # Linux, gcc-16, ubsan
+          - name: UBSAN
+            toolset: gcc-16
+            cxxstd: "03,11,14,17,20,23"
+            cxxflags: -pipe
+            ubsan: 1
+            os: ubuntu-latest
+            container: ubuntu:26.04
+            install: g++-16
+          # Linux, gcc-16, asan
+          - name: ASAN
+            toolset: gcc-16
+            cxxstd: "03,11,14,17,20,23"
+            cxxflags: -pipe
+            asan: 1
+            os: ubuntu-latest
+            container: ubuntu:26.04
+            install: g++-16
     timeout-minutes: 240
     runs-on: ${{matrix.os}}
     container: ${{matrix.container}}
