@@ -1066,7 +1066,10 @@ jobs:
       # A new, minimal "Build Tools for Visual Studio 2022" instance with only the
       # C++ core build tools and the older toolset. This is faster than to modify
       # the full Visual Studio instance of the runner, as the installer does not
-      # have to examine and update all its workloads
+      # have to examine and update all its workloads.
+      # VC.Tools.x86.x64 (the latest toolset) is a recommended component of the
+      # VCTools workload, so it is not installed by default. Some older toolsets
+      # (VC.140, VC.14.29) do not depend on it, but vcvarsall.bat is part of it
       - name: Install older MSVC toolset
         if: matrix.vs_component != ''
         shell: cmd
@@ -1074,7 +1077,7 @@ jobs:
             set "VSPATH=C:\BuildTools"
             echo VSPATH=%VSPATH%>>%GITHUB_ENV%
             curl -L --retry %NET_RETRY_COUNT% -o vs_buildtools.exe https://aka.ms/vs/17/release/vs_buildtools.exe
-            start "" /wait vs_buildtools.exe --installPath "%VSPATH%" --add Microsoft.VisualStudio.Workload.VCTools --add ${{matrix.vs_component}} --quiet --wait --norestart --nocache
+            start "" /wait vs_buildtools.exe --installPath "%VSPATH%" --add Microsoft.VisualStudio.Workload.VCTools --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --add ${{matrix.vs_component}} --quiet --wait --norestart --nocache
             set RET=%ERRORLEVEL%
             echo vs_buildtools.exe exit code: %RET%
             del /f vs_buildtools.exe
