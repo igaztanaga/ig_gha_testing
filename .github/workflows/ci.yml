@@ -937,7 +937,7 @@ jobs:
             addrmd: 64
             os: windows-2022
          #Older MSVC toolsets: "vs_component" is installed as a side-by-side
-         #toolset in the VS 2022 of the runner and "vcvars_ver" selects it.
+         #toolset in a new Build Tools 2022 instance and "vcvars_ver" selects it.
          #One job for each toolset and address model, so they run in parallel
           - toolset: msvc-14.2
             cxxstd: "14,17,20,latest"
@@ -1059,18 +1059,23 @@ jobs:
                 b2 -d0 headers
             )
 
+      # A new, minimal "Build Tools for Visual Studio 2022" instance with only the
+      # C++ core build tools and the older toolset. This is faster than to modify
+      # the full Visual Studio instance of the runner, as the installer does not
+      # have to examine and update all its workloads
       - name: Install older MSVC toolset
         if: matrix.vs_component != ''
         shell: cmd
         run: |
-            set "VSI=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer"
-            for /f "usebackq delims=" %%i in (`"%VSI%\vswhere.exe" -latest -property installationPath`) do set "VSPATH=%%i"
-            echo VSPATH: %VSPATH%
+            set "VSPATH=C:\BuildTools"
             echo VSPATH=%VSPATH%>>%GITHUB_ENV%
-            start "" /wait "%VSI%\vs_installer.exe" modify --installPath "%VSPATH%" --add ${{matrix.vs_component}} --quiet --norestart --nocache
+            curl -L --retry %NET_RETRY_COUNT% -o vs_buildtools.exe https://aka.ms/vs/17/release/vs_buildtools.exe
+            start "" /wait vs_buildtools.exe --installPath "%VSPATH%" --add Microsoft.VisualStudio.Workload.VCTools --add ${{matrix.vs_component}} --quiet --wait --norestart --nocache
+            set RET=%ERRORLEVEL%
+            del /f vs_buildtools.exe
             rem 3010: success, reboot required
-            if %ERRORLEVEL% == 3010 exit /b 0
-            exit /b %ERRORLEVEL%
+            if %RET% == 3010 exit /b 0
+            exit /b %RET%
 
       - name: Run tests
         if: matrix.cmake_tests == ''
