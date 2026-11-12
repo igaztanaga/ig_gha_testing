@@ -20,8 +20,6 @@ env:
 
 jobs:
   posix:
-    #Disabled for now, to use less runner time. Remove this line to enable the job again
-    if: false
     defaults:
       run:
         shell: bash
@@ -774,8 +772,6 @@ jobs:
 
   # NVIDIA HPC SDK (nvc++), an EDG-based C++ front-end
   nvhpc:
-    #Disabled for now, to use less runner time. Remove this line to enable the job again
-    if: false
     defaults:
       run:
         shell: bash
@@ -1129,8 +1125,6 @@ jobs:
             done
 
   cygwin:
-    #Disabled for now, to use less runner time. Remove this line to enable the job again
-    if: false
     defaults:
       run:
         shell: bash
@@ -1279,8 +1273,6 @@ jobs:
             ./b2 "${B2_ARGS[@]}"
 
   bsd:
-    #Disabled for now, to use less runner time. Remove this line to enable the job again
-    if: false
     strategy:
       fail-fast: false
       matrix:
