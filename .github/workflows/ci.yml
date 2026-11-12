@@ -1110,17 +1110,22 @@ jobs:
         shell: cmd
         run: |
             cd boost-root
-            rem Older toolset: vcvarsall sets the environment of the toolset, and the
-            rem toolset is declared with no command, so b2 calls no setup script and
-            rem uses this environment
+            rem Older toolset: older-msvc-setup.bat calls vcvarsall with the toolset
+            rem and SDK versions. The toolset is declared with this script as <setup>:
+            rem else b2 can find and call the vcvarsall.bat of the toolset (for
+            rem msvc-14.0, the one of VS 2015), which selects the newest SDK
             set VCARCH=x64
             if "${{matrix.addrmd}}" == "32" set VCARCH=x86
             set TSVER=${{matrix.toolset}}
             rem Without an SDK version, vcvarsall selects the newest installed SDK
             set WINSDK_VER=
             if not "${{matrix.winsdk}}" == "" set WINSDK_VER=10.0.${{matrix.winsdk}}.0
-            if not "${{matrix.vcvars_ver}}" == "" call "%VSPATH%\VC\Auxiliary\Build\vcvarsall.bat" %VCARCH% %WINSDK_VER% -vcvars_ver=${{matrix.vcvars_ver}} || exit /b 1
-            if not "${{matrix.vcvars_ver}}" == "" echo using msvc : %TSVER:msvc-=% ;>>project-config.jam
+            set "OLDER_SETUP=%CD:\=/%/older-msvc-setup.bat"
+            if not "${{matrix.vcvars_ver}}" == "" > older-msvc-setup.bat echo @call "%VSPATH%\VC\Auxiliary\Build\vcvarsall.bat" %VCARCH% %WINSDK_VER% -vcvars_ver=${{matrix.vcvars_ver}}
+            if not "${{matrix.vcvars_ver}}" == "" type older-msvc-setup.bat
+            if not "${{matrix.vcvars_ver}}" == "" call older-msvc-setup.bat || exit /b 1
+            if not "${{matrix.vcvars_ver}}" == "" >> project-config.jam echo using msvc : %TSVER:msvc-=% : : ^<setup^>"%OLDER_SETUP%" ;
+            if not "${{matrix.vcvars_ver}}" == "" type project-config.jam
             if not "${{matrix.vcvars_ver}}" == "" where cl rc || exit /b 1
             set B2_ARM64EC=
             if not "${{matrix.arm64ec}}" == "" set B2_ARM64EC=architecture=arm cflags=/arm64EC linkflags=/MACHINE:ARM64EC
