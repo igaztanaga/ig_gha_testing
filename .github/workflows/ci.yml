@@ -987,6 +987,21 @@ jobs:
             vs_component: Microsoft.VisualStudio.Component.VC.140
             vcvars_ver: "14.0"
             winsdk: "22621"
+         #Toolsets that the VS 2022 installer cannot install: "vs_legacy_url" is
+         #the web installer of an old Visual Studio edition, installed silently.
+         #b2 finds the toolset in its default path. "cxxstd" is not defined
+         #because msvc-12.0 has no /std option.
+          - toolset: msvc-12.0
+            addrmd: 32
+            os: windows-2025
+            # Visual Studio Express 2013 for Windows Desktop with Update 5
+            vs_legacy_url: https://download.microsoft.com/download/2/E/E/2EEC68E6-7B03-437A-AF06-F8E43F04014D/wdexpress_full.exe
+            vs_legacy_dir: Microsoft Visual Studio 12.0
+          - toolset: msvc-12.0
+            addrmd: 64
+            os: windows-2025
+            vs_legacy_url: https://download.microsoft.com/download/2/E/E/2EEC68E6-7B03-437A-AF06-F8E43F04014D/wdexpress_full.exe
+            vs_legacy_dir: Microsoft Visual Studio 12.0
           - toolset: clang-win
             cxxstd: "14,17,latest"
             addrmd: 64
@@ -1109,6 +1124,29 @@ jobs:
             )
             exit /b %RET%
 
+      # Visual Studio editions older than 2015 use the old setup.exe based
+      # installer. Microsoft still hosts the web installers, which download the
+      # selected packages. /Quiet installs without UI and /NoRestart postpones
+      # the reboot (exit code 3010), which is not necessary for the compiler.
+      - name: Install legacy Visual Studio
+        if: matrix.vs_legacy_url != ''
+        shell: cmd
+        run: |
+            set "VSLEGACY=%ProgramFiles(x86)%\${{matrix.vs_legacy_dir}}"
+            curl -L --retry %NET_RETRY_COUNT% -o vs_legacy.exe "${{matrix.vs_legacy_url}}"
+            start "" /wait vs_legacy.exe /Quiet /NoRestart /Log "%TEMP%\vs_legacy.log"
+            set RET=%ERRORLEVEL%
+            echo vs_legacy.exe exit code: %RET%
+            del /f vs_legacy.exe
+            if %RET% == 3010 set RET=0
+            if not exist "%VSLEGACY%\VC\vcvarsall.bat" (
+                echo ERROR: "%VSLEGACY%\VC\vcvarsall.bat" not found
+                for /f "delims=" %%f in ('dir /b /o-d "%TEMP%\vs_legacy*.log" 2^>nul') do powershell -NoProfile -Command "Get-Content -Tail 200 '%TEMP%\%%f'"
+                exit /b 1
+            )
+            dir "%VSLEGACY%\VC\bin"
+            exit /b %RET%
+
       # The MSVC STL of the newest VS requires a minimum Clang version (error
       # STL1000), and the LLVM in "C:\Program Files\LLVM" can be older. b2 finds
       # clang-cl.exe in PATH first, so put there the clang-cl of the same VS
@@ -1148,8 +1186,10 @@ jobs:
             if not "${{matrix.vcvars_ver}}" == "" where cl rc || exit /b 1
             set B2_ARM64EC=
             if not "${{matrix.arm64ec}}" == "" set B2_ARM64EC=architecture=arm cflags=/arm64EC linkflags=/MACHINE:ARM64EC
+            set B2_CXXSTD=
+            if not "${{matrix.cxxstd}}" == "" set B2_CXXSTD=cxxstd=${{matrix.cxxstd}}
             rem --remove-test-targets: delete the object files and executables of the passed tests, so the runner disk does not fill up
-            b2 -j %NUMBER_OF_PROCESSORS% --remove-test-targets libs/%LIBRARY%/test toolset=${{matrix.toolset}} cxxstd=${{matrix.cxxstd}} address-model=${{matrix.addrmd}} variant=debug,release embed-manifest-via=linker debug-symbols=off %B2_ARM64EC%
+            b2 -j %NUMBER_OF_PROCESSORS% --remove-test-targets libs/%LIBRARY%/test toolset=${{matrix.toolset}} %B2_CXXSTD% address-model=${{matrix.addrmd}} variant=debug,release embed-manifest-via=linker debug-symbols=off %B2_ARM64EC%
 
       # The superproject test procedure (tools/cmake/README.md, "Testing Boost
       # with CMake") applied to this library only. A single-config generator
