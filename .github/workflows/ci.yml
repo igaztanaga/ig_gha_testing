@@ -944,8 +944,9 @@ jobs:
             cxxstd: "14,17,20,latest"
             addrmd: 64
             os: windows-2022
-         #Older MSVC toolsets: "vs_component" is installed as a side-by-side
-         #toolset in a new Build Tools 2022 instance and "vcvars_ver" selects it.
+         #Older MSVC toolsets: only "vs_component" is installed in a new Build
+         #Tools 2022 instance and "toolset_ver" is its version (the folder name
+         #prefix under VC\Tools\MSVC, or 14.0 for the VS 2015 layout).
          #One job for each toolset and address model, so they run in parallel.
          #"winsdk" (optional) installs and selects an older Windows 11 SDK, for
          #toolsets that cannot compile the headers of the default SDK
@@ -954,54 +955,45 @@ jobs:
             addrmd: 32
             os: windows-2022
             vs_component: Microsoft.VisualStudio.Component.VC.14.29.16.11.x86.x64
-            vcvars_ver: "14.29"
+            toolset_ver: "14.29"
           - toolset: msvc-14.2
             cxxstd: "14,17,20,latest"
             addrmd: 64
             os: windows-2022
             vs_component: Microsoft.VisualStudio.Component.VC.14.29.16.11.x86.x64
-            vcvars_ver: "14.29"
+            toolset_ver: "14.29"
           - toolset: msvc-14.1
             cxxstd: "14,17,latest"
             addrmd: 32
             os: windows-2022
             vs_component: Microsoft.VisualStudio.Component.VC.v141.x86.x64
-            vcvars_ver: "14.16"
+            toolset_ver: "14.16"
           - toolset: msvc-14.1
             cxxstd: "14,17,latest"
             addrmd: 64
             os: windows-2022
             vs_component: Microsoft.VisualStudio.Component.VC.v141.x86.x64
-            vcvars_ver: "14.16"
+            toolset_ver: "14.16"
           - toolset: msvc-14.0
             cxxstd: "14,latest"
             addrmd: 32
             os: windows-2022
             vs_component: Microsoft.VisualStudio.Component.VC.140
-            vcvars_ver: "14.0"
+            toolset_ver: "14.0"
             winsdk: "22621"
           - toolset: msvc-14.0
             cxxstd: "14,latest"
             addrmd: 64
             os: windows-2022
             vs_component: Microsoft.VisualStudio.Component.VC.140
-            vcvars_ver: "14.0"
+            toolset_ver: "14.0"
             winsdk: "22621"
-         #Toolsets that the VS 2022 installer cannot install: "vs_legacy_url" is
-         #the web installer of an old Visual Studio edition, installed silently.
-         #b2 finds the toolset in its default path. "cxxstd" is not defined
-         #because msvc-12.0 has no /std option.
+         #msvc-12.0 (VS 2013) cannot be installed by the VS 2022 installer: the
+         #"Install MSVC 12.0" step installs it from the VS 2013 ISO. "cxxstd"
+         #is not defined because msvc-12.0 has no /std option.
           - toolset: msvc-12.0
-            addrmd: 32
+            addrmd: 32,64
             os: windows-2025
-            # Visual Studio Express 2013 for Windows Desktop with Update 5
-            vs_legacy_url: https://download.microsoft.com/download/2/E/E/2EEC68E6-7B03-437A-AF06-F8E43F04014D/wdexpress_full.exe
-            vs_legacy_dir: Microsoft Visual Studio 12.0
-          - toolset: msvc-12.0
-            addrmd: 64
-            os: windows-2025
-            vs_legacy_url: https://download.microsoft.com/download/2/E/E/2EEC68E6-7B03-437A-AF06-F8E43F04014D/wdexpress_full.exe
-            vs_legacy_dir: Microsoft Visual Studio 12.0
           - toolset: clang-win
             cxxstd: "14,17,latest"
             addrmd: 64
@@ -1086,66 +1078,147 @@ jobs:
                 b2 -d0 headers
             )
 
-      # A new, minimal "Build Tools for Visual Studio 2022" instance with only the
-      # C++ core build tools and the older toolset. This is faster than to modify
-      # the full Visual Studio instance of the runner, as the installer does not
-      # have to examine and update all its workloads.
-      # VC.Tools.x86.x64 (the latest toolset) is a recommended component of the
-      # VCTools workload, so it is not installed by default. Some older toolsets
-      # (VC.140, VC.14.29) do not depend on it, but vcvarsall.bat is part of it
+      # A new "Build Tools for Visual Studio 2022" instance with only the older
+      # toolset component and its required dependencies (and optionally an older
+      # Windows SDK). The VCTools workload and the latest toolset are not
+      # installed (~1.5-2 GB less to download): they are only needed for
+      # vcvarsall.bat. Instead, older-msvc-setup.bat sets PATH, INCLUDE and LIB
+      # for the toolset and the Windows 10/11 SDK. b2 calls it with "x86" or
+      # "amd64". Without "winsdk", the newest SDK installed in the runner is used
       - name: Install older MSVC toolset
         if: matrix.vs_component != ''
-        shell: cmd
+        shell: pwsh
         run: |
-            set "VSPATH=C:\BuildTools"
-            echo VSPATH=%VSPATH%>>%GITHUB_ENV%
-            set WINSDK_ADD=
-            if not "${{matrix.winsdk}}" == "" set "WINSDK_ADD=--add Microsoft.VisualStudio.Component.Windows11SDK.${{matrix.winsdk}}"
-            curl -L --retry %NET_RETRY_COUNT% -o vs_buildtools.exe https://aka.ms/vs/17/release/vs_buildtools.exe
-            start "" /wait vs_buildtools.exe --installPath "%VSPATH%" --add Microsoft.VisualStudio.Workload.VCTools --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --add ${{matrix.vs_component}} %WINSDK_ADD% --quiet --wait --norestart --nocache
-            set RET=%ERRORLEVEL%
-            echo vs_buildtools.exe exit code: %RET%
-            del /f vs_buildtools.exe
-            rem 3010: success, reboot required
-            if %RET% == 3010 set RET=0
-            rem The installer can return 0 and install nothing: check the result
-            "%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -all -products * -format text -property installationPath
-            if not exist "%VSPATH%\VC\Auxiliary\Build\vcvarsall.bat" (
-                echo ERROR: "%VSPATH%\VC\Auxiliary\Build\vcvarsall.bat" not found
-                dir "%VSPATH%"
-                for /f "delims=" %%f in ('dir /b /o-d "%TEMP%\dd_*.log" 2^>nul') do type "%TEMP%\%%f"
-                exit /b 1
-            )
-            set "WINSDK_INC=%ProgramFiles(x86)%\Windows Kits\10\Include\10.0.${{matrix.winsdk}}.0\ucrt"
-            if not "${{matrix.winsdk}}" == "" if not exist "%WINSDK_INC%\wchar.h" (
-                echo ERROR: Windows SDK 10.0.${{matrix.winsdk}}.0 not found
-                dir "%ProgramFiles(x86)%\Windows Kits\10\Include"
-                exit /b 1
-            )
-            exit /b %RET%
+            $vspath = 'C:\BuildTools'
+            $sdkopt = '${{matrix.winsdk}}'
+            $a = @('--installPath', $vspath, '--add', '${{matrix.vs_component}}')
+            if ($sdkopt) { $a += '--add', "Microsoft.VisualStudio.Component.Windows11SDK.$sdkopt" }
+            $a += '--quiet', '--wait', '--norestart', '--nocache'
+            curl.exe -fL --retry $env:NET_RETRY_COUNT -o vs_buildtools.exe https://aka.ms/vs/17/release/vs_buildtools.exe
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+            $r = (Start-Process .\vs_buildtools.exe -ArgumentList $a -Wait -PassThru).ExitCode
+            Write-Host "vs_buildtools.exe exit code: $r"
+            Remove-Item vs_buildtools.exe
+            function Show-Logs { Get-ChildItem "$env:TEMP\dd_*.log" | Sort-Object LastWriteTime | Select-Object -Last 3 | ForEach-Object { Get-Content $_ -Tail 100 } }
+            # 3010: success, reboot required
+            if ($r -ne 0 -and $r -ne 3010) { Show-Logs; exit 1 }
+            # Toolset folders. The VS 2015 (v140) toolset keeps its own layout
+            $ver = '${{matrix.toolset_ver}}'
+            if ($ver -eq '14.0') {
+                $vc = "${env:ProgramFiles(x86)}\Microsoft Visual Studio 14.0\VC"
+                $inc = "$vc\include"; $lib86 = "$vc\lib"; $lib64 = "$vc\lib\amd64"
+                # x86 host tools always exist; x64 host tools are preferred for x64
+                $path86 = "$vc\bin"
+                $path64 = if (Test-Path "$vc\bin\amd64\cl.exe") { "$vc\bin\amd64" } else { "$vc\bin\x86_amd64;$vc\bin" }
+            } else {
+                $vc = Get-ChildItem "$vspath\VC\Tools\MSVC" -Directory -ErrorAction SilentlyContinue |
+                      Where-Object Name -like "$ver.*" | Sort-Object { [version]$_.Name } | Select-Object -Last 1 -ExpandProperty FullName
+                if (-not $vc) { Write-Host "ERROR: toolset $ver not found in $vspath\VC\Tools\MSVC"; Get-ChildItem "$vspath\VC\Tools\MSVC" -ErrorAction SilentlyContinue; Show-Logs; exit 1 }
+                $inc = "$vc\include"; $lib86 = "$vc\lib\x86"; $lib64 = "$vc\lib\x64"
+                $hostdir = if (Test-Path "$vc\bin\Hostx64\x64\cl.exe") { 'Hostx64' } else { 'Hostx86' }
+                $path86 = "$vc\bin\$hostdir\x86;$vc\bin\$hostdir\$($hostdir -replace 'Host','')"
+                $path64 = "$vc\bin\$hostdir\x64;$vc\bin\$hostdir\$($hostdir -replace 'Host','')"
+            }
+            # Windows SDK: the requested one, or the newest installed one
+            $kits = "${env:ProgramFiles(x86)}\Windows Kits\10"
+            if ($sdkopt) { $sdkver = "10.0.$sdkopt.0" } else {
+                $sdkver = Get-ChildItem "$kits\Include" -Directory | Where-Object { Test-Path "$($_.FullName)\um\windows.h" } |
+                          Sort-Object { [version]$_.Name } | Select-Object -Last 1 -ExpandProperty Name
+            }
+            Write-Host "Toolset: $vc"
+            Write-Host "Windows SDK: $sdkver"
+            $sdkinc = "$kits\Include\$sdkver"; $sdklib = "$kits\Lib\$sdkver"; $sdkbin = "$kits\bin\$sdkver\x64"
+            $required = "$inc\vector", "$lib86\msvcprt.lib", "$lib64\msvcprt.lib", "$sdkinc\ucrt\stdio.h", "$sdkinc\um\windows.h",
+                        "$sdklib\ucrt\x86\ucrt.lib", "$sdklib\ucrt\x64\ucrt.lib", "$sdklib\um\x86\kernel32.lib", "$sdklib\um\x64\kernel32.lib", "$sdkbin\rc.exe"
+            $required += ($path86 -split ';')[0] + '\cl.exe'
+            $required += ($path64 -split ';')[0] + '\cl.exe'
+            $missing = $required | Where-Object { -not (Test-Path $_) }
+            if ($missing) { Write-Host "ERROR: not installed:"; $missing; Show-Logs; exit 1 }
+            @(
+                '@if /i "%~1" == "x86" ('
+                "  set `"PATH=$path86;$sdkbin;%PATH%`""
+                "  set `"LIB=$lib86;$sdklib\ucrt\x86;$sdklib\um\x86`""
+                ') else ('
+                "  set `"PATH=$path64;$sdkbin;%PATH%`""
+                "  set `"LIB=$lib64;$sdklib\ucrt\x64;$sdklib\um\x64`""
+                ')'
+                "@set `"INCLUDE=$inc;$sdkinc\ucrt;$sdkinc\shared;$sdkinc\um;$sdkinc\winrt`""
+                '@set "LIBPATH="'
+            ) | Set-Content -Encoding ascii boost-root\older-msvc-setup.bat
 
-      # Visual Studio editions older than 2015 use the old setup.exe based
-      # installer. Microsoft still hosts the web installers, which download the
-      # selected packages. /Quiet installs without UI and /NoRestart postpones
-      # the reboot (exit code 3010), which is not necessary for the compiler.
-      - name: Install legacy Visual Studio
-        if: matrix.vs_legacy_url != ''
-        shell: cmd
+      # MSVC 12.0 (Visual Studio 2013 Update 5) is installed from the packages
+      # of the VS Express 2013 for Windows Desktop ISO. The web installer does not
+      # work: its package download links were removed. Only the C++ compiler,
+      # libraries, CRT and Windows 8.1 SDK are installed (~1 GB instead of
+      # ~4 GB), with msiexec and the Update 5 patches that apply to each one.
+      # VSEXTUI=1 / NOVSUI=1 are the properties the VS setup passes, without
+      # them the packages refuse to install ("please run Setup.exe").
+      # Without the VS shell packages the registry keys that vcvarsall.bat needs
+      # are not written, so older-msvc-setup.bat sets the environment instead.
+      # b2 calls it with "x86" or "amd64" (64-bit code is compiled with the
+      # x86_amd64 cross compiler, Express has no native x64 compiler)
+      - name: Install MSVC 12.0
+        if: matrix.toolset == 'msvc-12.0'
+        shell: pwsh
         run: |
-            set "VSLEGACY=%ProgramFiles(x86)%\${{matrix.vs_legacy_dir}}"
-            curl -L --retry %NET_RETRY_COUNT% -o vs_legacy.exe "${{matrix.vs_legacy_url}}"
-            start "" /wait vs_legacy.exe /Quiet /NoRestart /Log "%TEMP%\vs_legacy.log"
-            set RET=%ERRORLEVEL%
-            echo vs_legacy.exe exit code: %RET%
-            del /f vs_legacy.exe
-            if %RET% == 3010 set RET=0
-            if not exist "%VSLEGACY%\VC\vcvarsall.bat" (
-                echo ERROR: "%VSLEGACY%\VC\vcvarsall.bat" not found
-                for /f "delims=" %%f in ('dir /b /o-d "%TEMP%\vs_legacy*.log" 2^>nul') do powershell -NoProfile -Command "Get-Content -Tail 200 '%TEMP%\%%f'"
-                exit /b 1
-            )
-            dir "%VSLEGACY%\VC\bin"
-            exit /b %RET%
+            $iso = Join-Path $env:RUNNER_TEMP 'vs2013.iso'
+            curl.exe -fL --retry $env:NET_RETRY_COUNT -o $iso https://download.microsoft.com/download/2/E/E/2EEC68E6-7B03-437A-AF06-F8E43F04014D/vs2013.5_dskexp_ENU.iso
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+            $drive = (Mount-DiskImage -ImagePath $iso -PassThru | Get-Volume).DriveLetter
+            $pkgs = "${drive}:\packages"
+            $logs = Join-Path $env:RUNNER_TEMP 'msvc-12.0-logs'
+            New-Item -ItemType Directory -Force $logs | Out-Null
+            function Install-Msi([string]$msi, [string[]]$patches = @(), [string]$props = '', [switch]$optional) {
+                $name = [IO.Path]::GetFileNameWithoutExtension($msi)
+                $a = @('/i', "`"$pkgs\$msi`"", '/qn', '/norestart', '/l*v', "`"$logs\$name.log`"")
+                if ($props) { $a += $props }
+                if ($patches) { $a += 'PATCH="' + (($patches | ForEach-Object { "$pkgs\$_" }) -join ';') + '"' }
+                $r = (Start-Process msiexec.exe -ArgumentList $a -Wait -PassThru).ExitCode
+                Write-Host "$msi exit code: $r"
+                if ($r -ne 0 -and $r -ne 3010 -and -not $optional) {
+                    Get-Content "$logs\$name.log" -Tail 100
+                    exit 1
+                }
+            }
+            # CRT DLLs: in System32 and SysWOW64, used by the compiler and the tests.
+            # Optional: they refuse to install if a newer VC 2013 runtime is installed
+            foreach ($a in 'x86', 'amd64') {
+                $x = $a -replace 'amd64', 'x64'
+                Install-Msi "vcRuntimeMinimum_$a\vc_runtimeMinimum_$x.msi" -props 'NOVSUI=1' -optional
+                Install-Msi "vcRuntimeAdditional_$a\vc_runtimeAdditional_$x.msi" -props 'NOVSUI=1' -optional
+                Install-Msi "vcRuntimeDebug_$a\vc_runtimeDebug_$x.msi" -props 'NOVSUI=1' -optional
+            }
+            $up5 = 'kb2829760\kb2829760.msp', 'kb2829760\kb2829760v2.msp', 'kb2829760\kb2829760v3.msp', 'kb2829760vc\kb2829760vc.msp'
+            Install-Msi 'vc_compilerCore86\vc_compilerCore86.msi' $up5 'VSEXTUI=1'
+            Install-Msi 'vc_compilerCore86res\vc_compilerCore86res.msi' ($up5 -replace '\.msp$', '-enu.msp') 'VSEXTUI=1'
+            Install-Msi 'vc_librarycore86\vc_librarycore86.msi' 'kb2829760\kb2829760v2.msp' 'VSEXTUI=1'
+            Install-Msi 'vc_libraryDesktop\x86\vc_LibraryDesktopX86.msi' 'kb2829760\kb2829760v2.msp' 'VSEXTUI=1'
+            Install-Msi 'vc_libraryDesktop\x64\vc_LibraryDesktopX64.msi' @() 'VSEXTUI=1'
+            Install-Msi 'Win81_SDK\Windows Software Development Kit-x86_en-us.msi' 'Win81_SDK\Windows Software Development Kit-x86_en-us.msp'
+            Dismount-DiskImage -ImagePath $iso | Out-Null
+            Remove-Item $iso
+            $vc  = "${env:ProgramFiles(x86)}\Microsoft Visual Studio 12.0\VC"
+            $sdk = "${env:ProgramFiles(x86)}\Windows Kits\8.1"
+            $required = "$vc\bin\cl.exe", "$vc\bin\x86_amd64\cl.exe", "$vc\include\vector", "$vc\lib\msvcprt.lib", "$vc\lib\amd64\msvcprt.lib",
+                        "$sdk\Include\um\windows.h", "$sdk\Lib\winv6.3\um\x86\kernel32.lib", "$sdk\Lib\winv6.3\um\x64\kernel32.lib", "$sdk\bin\x86\rc.exe",
+                        "$env:SystemRoot\System32\msvcr120.dll", "$env:SystemRoot\System32\msvcr120d.dll",
+                        "$env:SystemRoot\SysWOW64\msvcr120.dll", "$env:SystemRoot\SysWOW64\msvcr120d.dll"
+            $missing = $required | Where-Object { -not (Test-Path $_) }
+            if ($missing) { Write-Host "ERROR: not installed:"; $missing; exit 1 }
+            @(
+                '@set "VCDIR=' + $vc + '"'
+                '@set "SDKDIR=' + $sdk + '"'
+                '@if /i "%~1" == "x86" ('
+                '  set "PATH=%VCDIR%\bin;%SDKDIR%\bin\x86;%PATH%"'
+                '  set "LIB=%VCDIR%\lib;%SDKDIR%\Lib\winv6.3\um\x86"'
+                ') else ('
+                '  set "PATH=%VCDIR%\bin\x86_amd64;%VCDIR%\bin;%SDKDIR%\bin\x86;%PATH%"'
+                '  set "LIB=%VCDIR%\lib\amd64;%SDKDIR%\Lib\winv6.3\um\x64"'
+                ')'
+                '@set "INCLUDE=%VCDIR%\include;%SDKDIR%\Include\shared;%SDKDIR%\Include\um;%SDKDIR%\Include\winrt"'
+                '@set "LIBPATH="'
+            ) | Set-Content -Encoding ascii boost-root\older-msvc-setup.bat
+            & "$vc\bin\cl.exe" 2>&1 | Select-Object -First 1
 
       # The MSVC STL of the newest VS requires a minimum Clang version (error
       # STL1000), and the LLVM in "C:\Program Files\LLVM" can be older. b2 finds
@@ -1167,23 +1240,19 @@ jobs:
         shell: cmd
         run: |
             cd boost-root
-            rem Older toolset: older-msvc-setup.bat calls vcvarsall with the toolset
-            rem and SDK versions. The toolset is declared with this script as <setup>:
-            rem else b2 can find and call the vcvarsall.bat of the toolset (for
-            rem msvc-14.0, the one of VS 2015), which selects the newest SDK
-            set VCARCH=x64
-            if "${{matrix.addrmd}}" == "32" set VCARCH=x86
+            rem Older toolsets: the install step writes older-msvc-setup.bat, which
+            rem sets the environment of the toolset and SDK. The toolset is declared
+            rem with this script as <setup>: else b2 can find and call another
+            rem vcvarsall.bat (for msvc-14.0, the one of VS 2015), which selects the
+            rem newest SDK. The script is also called here (with no argument: x64
+            rem environment) so that b2 finds cl.exe in PATH
             set TSVER=${{matrix.toolset}}
-            rem Without an SDK version, vcvarsall selects the newest installed SDK
-            set WINSDK_VER=
-            if not "${{matrix.winsdk}}" == "" set WINSDK_VER=10.0.${{matrix.winsdk}}.0
             set "OLDER_SETUP=%CD:\=/%/older-msvc-setup.bat"
-            if not "${{matrix.vcvars_ver}}" == "" > older-msvc-setup.bat echo @call "%VSPATH%\VC\Auxiliary\Build\vcvarsall.bat" %VCARCH% %WINSDK_VER% -vcvars_ver=${{matrix.vcvars_ver}}
-            if not "${{matrix.vcvars_ver}}" == "" type older-msvc-setup.bat
-            if not "${{matrix.vcvars_ver}}" == "" call older-msvc-setup.bat || exit /b 1
-            if not "${{matrix.vcvars_ver}}" == "" >> project-config.jam echo using msvc : %TSVER:msvc-=% : : ^<setup^>"%OLDER_SETUP%" ;
-            if not "${{matrix.vcvars_ver}}" == "" type project-config.jam
-            if not "${{matrix.vcvars_ver}}" == "" where cl rc || exit /b 1
+            if exist older-msvc-setup.bat type older-msvc-setup.bat
+            if exist older-msvc-setup.bat call older-msvc-setup.bat || exit /b 1
+            if exist older-msvc-setup.bat >> project-config.jam echo using msvc : %TSVER:msvc-=% : : ^<setup^>"%OLDER_SETUP%" ;
+            if exist older-msvc-setup.bat type project-config.jam
+            if exist older-msvc-setup.bat where cl rc || exit /b 1
             set B2_ARM64EC=
             if not "${{matrix.arm64ec}}" == "" set B2_ARM64EC=architecture=arm cflags=/arm64EC linkflags=/MACHINE:ARM64EC
             set B2_CXXSTD=
