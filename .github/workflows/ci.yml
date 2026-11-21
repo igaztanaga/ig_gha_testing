@@ -989,7 +989,8 @@ jobs:
             toolset_ver: "14.0"
             winsdk: "22621"
          #msvc-12.0 (VS 2013) cannot be installed by the VS 2022 installer: the
-         #"Install MSVC 12.0" step installs it from the VS 2013 ISO. "cxxstd"
+         #"Download/Install MSVC 12.0" steps install it from packages of the
+         #VS 2013 ISO. "cxxstd"
          #is not defined because msvc-12.0 has no /std option.
           - toolset: msvc-12.0
             addrmd: 32,64
@@ -1146,6 +1147,109 @@ jobs:
                 '@set "LIBPATH="'
             ) | Set-Content -Encoding ascii boost-root\older-msvc-setup.bat
 
+      # The VS Express 2013 for Windows Desktop ISO is 3.3 GB, but the packages
+      # that "Install MSVC 12.0" needs are less than 1 GB. This reads the ISO
+      # 9660 (Joliet) directory with HTTP range requests and downloads only the
+      # files under "packages" that match WANTED, to the same relative paths
+      # (the MSIs need their external .cab files next to them)
+      - name: Download MSVC 12.0 packages
+        if: matrix.toolset == 'msvc-12.0'
+        shell: python
+        run: |
+            import os, re, struct, sys, time, urllib.request
+            from concurrent.futures import ThreadPoolExecutor
+            URL = 'https://download.microsoft.com/download/2/E/E/2EEC68E6-7B03-437A-AF06-F8E43F04014D/vs2013.5_dskexp_ENU.iso'
+            OUT = os.path.join(os.environ['RUNNER_TEMP'], 'vs2013')
+            RETRIES = int(os.environ.get('NET_RETRY_COUNT', '5'))
+            WANTED = re.compile(r'^/packages/(' +
+                r'vcRuntime(Minimum|Additional|Debug)_(x86|amd64)/[^/]+' +
+                r'|vc_compilerCore86(res)?/[^/]+' +
+                r'|vc_librarycore86/[^/]+' +
+                r'|vc_libraryDesktop/x(86|64)/[^/]+' +
+                r'|kb2829760/kb2829760(v2|v3)?(-enu)?\.msp' +
+                r'|kb2829760vc/kb2829760vc(-enu)?\.msp' +
+                r'|Win81_SDK/([0-9a-f]{32}\.cab|Windows Software Development Kit( for Windows Store Apps)?-x86_en-us\.ms[ip])' +
+                r')$', re.I)
+            SEC = 2048
+
+            def get(off, n, path=None):
+                for i in range(RETRIES):
+                    try:
+                        req = urllib.request.Request(URL, headers={'Range': f'bytes={off}-{off + n - 1}'})
+                        with urllib.request.urlopen(req, timeout=120) as r:
+                            if r.status != 206:
+                                raise RuntimeError(f'HTTP {r.status}, expected 206')
+                            if path is None:
+                                data = r.read()
+                                if len(data) != n:
+                                    raise RuntimeError(f'got {len(data)} bytes, expected {n}')
+                                return data
+                            with open(path, 'wb') as f:
+                                while chunk := r.read(1 << 20):
+                                    f.write(chunk)
+                            if os.path.getsize(path) != n:
+                                raise RuntimeError(f'{path}: got {os.path.getsize(path)} bytes, expected {n}')
+                            return
+                    except Exception as e:
+                        print(f'Retry {i + 1}: {e}', flush=True)
+                        time.sleep(5)
+                sys.exit(f'ERROR: cannot read bytes {off}-{off + n - 1} of the ISO')
+
+            # Root directory: of the Joliet volume descriptor (UTF-16 names) if
+            # there is one, else of the primary one (this ISO has long ASCII names)
+            root, joliet = None, False
+            for s in range(16, 32):
+                vd = get(s * SEC, SEC)
+                if vd[0] == 255:
+                    break
+                if vd[0] == 2 and vd[88:91] in (b'%/@', b'%/C', b'%/E'):
+                    root, joliet = vd[156:190], True
+                    break
+                if vd[0] == 1 and root is None:
+                    root = vd[156:190]
+            if root is None:
+                sys.exit('ERROR: no volume descriptor in the ISO')
+
+            def walk(lba, size, path, files):
+                data, i = get(lba * SEC, size), 0
+                while i < len(data):
+                    ln = data[i]
+                    if ln == 0:  # records do not cross sector boundaries
+                        i = (i // SEC + 1) * SEC
+                        continue
+                    rec = data[i:i + ln]
+                    i += ln
+                    clba, csz, flags, nl = struct.unpack_from('<I', rec, 2)[0], struct.unpack_from('<I', rec, 10)[0], rec[25], rec[32]
+                    name = rec[33:33 + nl]
+                    if name in (b'\0', b'\1'):
+                        continue
+                    p = path + '/' + name.decode('utf-16-be' if joliet else 'latin-1').split(';')[0]
+                    if flags & 2:
+                        walk(clba, csz, p, files)
+                    elif WANTED.match(p):
+                        files.append((p, clba, csz))
+
+            files = []
+            walk(struct.unpack_from('<I', root, 2)[0], struct.unpack_from('<I', root, 10)[0], '', files)
+            print(f'Downloading {len(files)} files, {sum(f[2] for f in files) / 1e6:.0f} MB', flush=True)
+
+            def download(f):
+                p, lba, size = f
+                dst = os.path.join(OUT, *p.split('/'))
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                get(lba * SEC, size, dst)
+
+            with ThreadPoolExecutor(8) as ex:
+                list(ex.map(download, files))
+            # Every package the install step uses must be there
+            for p in ('vc_compilerCore86/vc_compilerCore86.msi', 'vc_compilerCore86res/vc_compilerCore86res.msi',
+                      'vc_librarycore86/vc_librarycore86.msi', 'vc_libraryDesktop/x86/vc_LibraryDesktopX86.msi',
+                      'vc_libraryDesktop/x64/vc_LibraryDesktopX64.msi', 'kb2829760/kb2829760v2.msp', 'kb2829760vc/kb2829760vc.msp',
+                      'Win81_SDK/Windows Software Development Kit-x86_en-us.msi',
+                      'Win81_SDK/Windows Software Development Kit for Windows Store Apps-x86_en-us.msi'):
+                if not os.path.isfile(os.path.join(OUT, 'packages', *p.split('/'))):
+                    sys.exit(f'ERROR: packages/{p} was not downloaded')
+
       # MSVC 12.0 (Visual Studio 2013 Update 5) is installed from the packages
       # of the VS Express 2013 for Windows Desktop ISO. The web installer does not
       # work: its package download links were removed. Only the C++ compiler,
@@ -1161,11 +1265,7 @@ jobs:
         if: matrix.toolset == 'msvc-12.0'
         shell: pwsh
         run: |
-            $iso = Join-Path $env:RUNNER_TEMP 'vs2013.iso'
-            curl.exe -fL --retry $env:NET_RETRY_COUNT -o $iso https://download.microsoft.com/download/2/E/E/2EEC68E6-7B03-437A-AF06-F8E43F04014D/vs2013.5_dskexp_ENU.iso
-            if ($LASTEXITCODE -ne 0) { exit 1 }
-            $drive = (Mount-DiskImage -ImagePath $iso -PassThru | Get-Volume).DriveLetter
-            $pkgs = "${drive}:\packages"
+            $pkgs = Join-Path $env:RUNNER_TEMP 'vs2013\packages'
             $logs = Join-Path $env:RUNNER_TEMP 'msvc-12.0-logs'
             New-Item -ItemType Directory -Force $logs | Out-Null
             function Install-Msi([string]$msi, [string[]]$patches = @(), [string]$props = '', [switch]$optional) {
@@ -1194,11 +1294,30 @@ jobs:
             Install-Msi 'vc_librarycore86\vc_librarycore86.msi' 'kb2829760\kb2829760v2.msp' 'VSEXTUI=1'
             Install-Msi 'vc_libraryDesktop\x86\vc_LibraryDesktopX86.msi' 'kb2829760\kb2829760v2.msp' 'VSEXTUI=1'
             Install-Msi 'vc_libraryDesktop\x64\vc_LibraryDesktopX64.msi' @() 'VSEXTUI=1'
-            Install-Msi 'Win81_SDK\Windows Software Development Kit-x86_en-us.msi' 'Win81_SDK\Windows Software Development Kit-x86_en-us.msp'
-            Dismount-DiskImage -ImagePath $iso | Out-Null
-            Remove-Item $iso
+            # Windows 8.1 SDK. A normal installation of its MSIs returns 0 but
+            # installs nothing in the runner (their WiX custom actions exit early),
+            # so their files are extracted instead (administrative installation,
+            # which runs no custom actions), and the SDK updates are applied to the
+            # extracted image. The desktop SDK MSI has only part of the SDK: the
+            # core headers, libraries and rc.exe (windows.h, kernel32.lib...) are
+            # in the "for Windows Store Apps" MSI
+            $sdkimg = 'C:\WinSDK81'
+            foreach ($m in 'Windows Software Development Kit-x86_en-us', 'Windows Software Development Kit for Windows Store Apps-x86_en-us') {
+                $name = $m -replace ' ', '_'
+                $r = (Start-Process msiexec.exe -Wait -PassThru -ArgumentList '/a', "`"$pkgs\Win81_SDK\$m.msi`"", "TARGETDIR=$sdkimg", '/qn', '/l*v', "`"$logs\${name}_admin.log`"").ExitCode
+                Write-Host "$m.msi (administrative) exit code: $r"
+                if ($r -ne 0) { Get-Content "$logs\${name}_admin.log" -Tail 100; exit 1 }
+                $r = (Start-Process msiexec.exe -Wait -PassThru -ArgumentList '/p', "`"$pkgs\Win81_SDK\$m.msp`"", '/a', "`"$sdkimg\$m.msi`"", '/qn', '/l*v', "`"$logs\${name}_patch.log`"").ExitCode
+                Write-Host "$m.msp (administrative) exit code: $r"
+            }
+            Remove-Item -Recurse -Force (Split-Path $pkgs)
             $vc  = "${env:ProgramFiles(x86)}\Microsoft Visual Studio 12.0\VC"
-            $sdk = "${env:ProgramFiles(x86)}\Windows Kits\8.1"
+            # The SDK root is the folder with Include\um\windows.h
+            $sdk = Get-ChildItem $sdkimg -Recurse -Filter windows.h -ErrorAction SilentlyContinue |
+                   Where-Object FullName -like '*\Include\um\windows.h' | Select-Object -First 1 |
+                   ForEach-Object { $_.Directory.Parent.Parent.FullName }
+            if (-not $sdk) { Write-Host "ERROR: windows.h not found in $sdkimg"; Get-ChildItem $sdkimg -Recurse -Depth 3 -Directory | Select-Object -ExpandProperty FullName; exit 1 }
+            Write-Host "Windows 8.1 SDK: $sdk"
             $required = "$vc\bin\cl.exe", "$vc\bin\x86_amd64\cl.exe", "$vc\include\vector", "$vc\lib\msvcprt.lib", "$vc\lib\amd64\msvcprt.lib",
                         "$sdk\Include\um\windows.h", "$sdk\Lib\winv6.3\um\x86\kernel32.lib", "$sdk\Lib\winv6.3\um\x64\kernel32.lib", "$sdk\bin\x86\rc.exe",
                         "$env:SystemRoot\System32\msvcr120.dll", "$env:SystemRoot\System32\msvcr120d.dll",
